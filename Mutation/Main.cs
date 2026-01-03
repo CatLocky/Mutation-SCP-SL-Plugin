@@ -1,11 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using CommandSystem;
-using Exiled.API.Enums;
 using Exiled.API.Features;
 using Exiled.API.Features.Roles;
 using Exiled.Events.EventArgs.Player;
@@ -26,10 +20,17 @@ namespace Mutation
 
         public override Version RequiredExiledVersion => new Version(9, 12, 2);
 
-        private int Mutations = 0;
-        private List<int> MutationsIDs = new List<int>();
-        private System.Random rand = new System.Random();
-
+        private int _mutations = 0;
+        private List<int> _mutationIDs = new List<int>();
+        private System.Random _rand = new System.Random();
+        private const float NormalGravity = -19.6f;
+        private const float MutationGravity = -6f;
+        private const float HealInterval = 1f;
+        private const float SpeedMultiplier = 1.3f;
+        private const float SpawnHintDuration = 3f;
+        private const float SpeedMutationDuration = 60f;
+        private const int HealthToHeal = 10;
+        private const int HealthAfterHeal = 50;
 
         public override void OnDisabled()
         {
@@ -47,48 +48,48 @@ namespace Mutation
             Log.Info("Plugin succesfully enabled");
         }
 
-        private void OnPlayerSpawned(SpawnedEventArgs ev)
+        private void OnPlayerSpawned(SpawnedEventArgs eventArgs)
         {
-            Role role = ev.Player.Role;
+            Role role = eventArgs.Player.Role;
             FpcRole fpc = role as FpcRole;
-            fpc.Gravity = new Vector3(0f, -19.6f, 0f);
-            if (hasMutation(ev.Player)) return;
-            if (rand.Next(0, 100) < Config.MutationChance)
+            fpc.Gravity = new Vector3(0f, NormalGravity, 0f);
+            if (HasMutation(eventArgs.Player)) return;
+            if (_rand.Next(0, 100) < Config.MutationChance)
             {
-                if (Mutations < Config.MaxMutations)
+                if (_mutations < Config.MaxMutations)
                 {
-                    Mutations++;
-                    ev.Player.ShowHint(new Hint("Вы стали мутантом, ваша скорость и сила прыжка увеличены.", 5f));
-                    MutationsIDs.Add(ev.Player.Id);
-                    fpc.Gravity = new Vector3(0f, -6f, 0f);
-                    fpc.SprintingSpeed *= 1.3f;
-                    Timing.CallDelayed(60f, () =>
+                    _mutations++;
+                    eventArgs.Player.ShowHint(new Hint("Вы стали мутантом, ваша скорость и сила прыжка увеличены.", SpawnHintDuration));
+                    _mutationIDs.Add(eventArgs.Player.Id);
+                    fpc.Gravity = new Vector3(0f, MutationGravity, 0f);
+                    fpc.SprintingSpeed *= SpeedMultiplier;
+                    Timing.CallDelayed(SpeedMutationDuration, () =>
                     {
-                        fpc.SprintingSpeed /= 1.3f;
+                        fpc.SprintingSpeed /= SpeedMultiplier;
                     });
                 }
             }
         }
 
-        private bool hasMutation(Player p)
+        private bool HasMutation(Player player)
         {
-            return MutationsIDs.Contains(p.Id);
+            return _mutationIDs.Contains(player.Id);
         }
 
-        private void OnPlayerHurt(HurtEventArgs ev)
+        private void OnPlayerHurt(HurtEventArgs eventArgs)
         {
-            if (hasMutation(ev.Player) && ev.Player.Health <= 10)
+            if (HasMutation(eventArgs.Player) && eventArgs.Player.Health <= HealthToHeal)
             {
-                Timing.RunCoroutine(Heal(ev.Player));
+                Timing.RunCoroutine(Heal(eventArgs.Player));
             }
         }
 
-        private IEnumerator<float> Heal(Player p)
+        private IEnumerator<float> Heal(Player player)
         {
-            while (p.Health < 50)
+            while (player.Health < HealthAfterHeal)
             {
-                p.Heal(1);
-                yield return Timing.WaitForSeconds(1f);
+                player.Heal(1);
+                yield return Timing.WaitForSeconds(HealInterval);
             }
         }
     }
