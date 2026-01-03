@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -49,15 +49,17 @@ namespace Mutation
 
         private void OnPlayerSpawned(SpawnedEventArgs ev)
         {
+            Role role = ev.Player.Role;
+            FpcRole fpc = role as FpcRole;
+            fpc.Gravity = new Vector3(0f, -19.6f, 0f);
+            if (hasMutation(ev.Player)) return;
             if (rand.Next(0, 100) < Config.MutationChance)
             {
                 if (Mutations < Config.MaxMutations)
                 {
                     Mutations++;
-                    ev.Player.ShowHint(new Hint("Вы стали мутантом, ваша скорость и сила прыжка увеличены."));
+                    ev.Player.ShowHint(new Hint("Вы стали мутантом, ваша скорость и сила прыжка увеличены.", 5f));
                     MutationsIDs.Add(ev.Player.Id);
-                    Role role = ev.Player.Role;
-                    FpcRole fpc = role as FpcRole;
                     fpc.Gravity = new Vector3(0f, -6f, 0f);
                     fpc.SprintingSpeed *= 1.3f;
                     Timing.CallDelayed(60f, () =>
